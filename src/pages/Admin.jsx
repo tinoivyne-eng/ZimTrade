@@ -37,7 +37,7 @@ export default function Admin() {
     Promise.all([
       supabase
         .from("adverts")
-        .select("*, categories(name), advert_images(url, position), profiles(full_name, phone)")
+        .select("*, categories(name), advert_images(url, position), profiles!adverts_user_id_fkey(full_name, phone)")
         .order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
     ]).then(([a, u]) => {
