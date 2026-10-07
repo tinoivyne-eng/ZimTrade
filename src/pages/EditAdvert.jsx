@@ -4,9 +4,9 @@ import { ArrowLeft, Loader2, ImagePlus, X } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { CITIES } from "../data/cities";
+import { prepareImage, isHeic } from "../lib/images";
 
 const MAX_IMAGES = 5;
-const MAX_SIZE_MB = 5;
 
 const inputClass =
   "w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 bg-white";
@@ -33,6 +33,7 @@ export default function EditAdvert() {
   const [error, setError] = useState("");
   const [notFound, setNotFound] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     supabase
@@ -70,27 +71,36 @@ export default function EditAdvert() {
   const keptExisting = existing.filter((img) => !removedIds.includes(img.id));
   const totalPhotos = keptExisting.length + newFiles.length;
 
-  const handleFiles = (e) => {
+  const handleFiles = async (e) => {
     setError("");
     const picked = Array.from(e.target.files);
+    e.target.value = "";
+
+    const room = MAX_IMAGES - totalPhotos;
+    if (picked.length > room) setError(`You can have up to ${MAX_IMAGES} photos.`);
+
+    setProcessing(true);
     const valid = [];
 
-    for (const file of picked) {
-      if (!file.type.startsWith("image/")) {
+    for (const file of picked.slice(0, Math.max(room, 0))) {
+      if (!file.type.startsWith("image/") && !isHeic(file)) {
         setError("Only image files are allowed.");
         continue;
       }
-      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-        setError(`${file.name} is larger than ${MAX_SIZE_MB}MB.`);
+      if (file.size > 25 * 1024 * 1024) {
+        setError(`${file.name} is too large (25MB max).`);
         continue;
       }
-      valid.push({ file, preview: URL.createObjectURL(file) });
+      try {
+        const processed = await prepareImage(file);
+        valid.push({ file: processed, preview: URL.createObjectURL(processed) });
+      } catch {
+        setError(`Could not read ${file.name}. Try a different photo.`);
+      }
     }
 
-    const room = MAX_IMAGES - totalPhotos;
-    if (valid.length > room) setError(`You can have up to ${MAX_IMAGES} photos.`);
-    setNewFiles([...newFiles, ...valid.slice(0, Math.max(room, 0))]);
-    e.target.value = "";
+    setNewFiles((prev) => [...prev, ...valid]);
+    setProcessing(false);
   };
 
   const removeExisting = (imgId) => setRemovedIds([...removedIds, imgId]);
@@ -198,7 +208,7 @@ export default function EditAdvert() {
       <form onSubmit={handleSubmit} className="mt-6 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-6">
         {/* Photos */}
         <div>
-          <Label hint={`up to ${MAX_IMAGES}, max ${MAX_SIZE_MB}MB each`}>Photos</Label>
+          <Label hint={`up to ${MAX_IMAGES} photos, any size`}>Photos</Label>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {keptExisting.map((img, i) => (
               <div key={img.id} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200">
@@ -239,8 +249,8 @@ export default function EditAdvert() {
             {totalPhotos < MAX_IMAGES && (
               <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-600 hover:bg-brand-50 cursor-pointer flex flex-col items-center justify-center text-slate-500 text-xs gap-1 transition">
                 <ImagePlus size={24} />
-                Add photo
-                <input type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
+                {processing ? "Processing..." : "Add photo"}
+                <input type="file" accept="image/*,.heic,.heif" multiple onChange={handleFiles} className="hidden" />
               </label>
             )}
           </div>
@@ -311,7 +321,7 @@ export default function EditAdvert() {
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
         <button
-          disabled={saving}
+          disabled={saving || processing}
           className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 disabled:opacity-60 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
         >
           {saving ? (<><Loader2 size={18} className="animate-spin" /> Saving...</>) : "Save changes"}

@@ -4,9 +4,9 @@ import { ImagePlus, X, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import { CITIES } from "../data/cities";
+import { prepareImage, isHeic } from "../lib/images";
 
 const MAX_IMAGES = 5;
-const MAX_SIZE_MB = 5;
 
 const inputClass =
   "w-full border border-slate-300 rounded-xl px-4 py-3 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100 bg-white";
@@ -37,6 +37,7 @@ export default function PostAdvert() {
   const [files, setFiles] = useState([]); // [{ file, preview }]
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     supabase
@@ -54,29 +55,36 @@ export default function PostAdvert() {
 
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleFiles = (e) => {
+  const handleFiles = async (e) => {
     setError("");
     const picked = Array.from(e.target.files);
+    e.target.value = "";
+
+    const room = MAX_IMAGES - files.length;
+    if (picked.length > room) setError(`You can upload up to ${MAX_IMAGES} photos.`);
+
+    setProcessing(true);
     const valid = [];
 
-    for (const file of picked) {
-      if (!file.type.startsWith("image/")) {
+    for (const file of picked.slice(0, Math.max(room, 0))) {
+      if (!file.type.startsWith("image/") && !isHeic(file)) {
         setError("Only image files are allowed.");
         continue;
       }
-      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-        setError(`${file.name} is larger than ${MAX_SIZE_MB}MB.`);
+      if (file.size > 25 * 1024 * 1024) {
+        setError(`${file.name} is too large (25MB max).`);
         continue;
       }
-      valid.push({ file, preview: URL.createObjectURL(file) });
+      try {
+        const processed = await prepareImage(file);
+        valid.push({ file: processed, preview: URL.createObjectURL(processed) });
+      } catch {
+        setError(`Could not read ${file.name}. Try a different photo.`);
+      }
     }
 
-    const combined = [...files, ...valid];
-    if (combined.length > MAX_IMAGES) {
-      setError(`You can upload up to ${MAX_IMAGES} photos.`);
-    }
-    setFiles(combined.slice(0, MAX_IMAGES));
-    e.target.value = "";
+    setFiles((prev) => [...prev, ...valid]);
+    setProcessing(false);
   };
 
   const removeFile = (index) => {
@@ -159,7 +167,7 @@ export default function PostAdvert() {
       <form onSubmit={handleSubmit} className="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm p-6 md:p-8 space-y-6">
         {/* Photos */}
         <div>
-          <Label hint={`up to ${MAX_IMAGES}, max ${MAX_SIZE_MB}MB each`}>Photos</Label>
+          <Label hint={`up to ${MAX_IMAGES} photos, any size`}>Photos</Label>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {files.map((f, i) => (
               <div key={f.preview} className="relative aspect-square rounded-xl overflow-hidden border border-slate-200">
@@ -183,8 +191,8 @@ export default function PostAdvert() {
             {files.length < MAX_IMAGES && (
               <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-600 hover:bg-brand-50 cursor-pointer flex flex-col items-center justify-center text-slate-500 text-xs gap-1 transition">
                 <ImagePlus size={24} />
-                Add photo
-                <input type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
+                {processing ? "Processing..." : "Add photo"}
+                <input type="file" accept="image/*,.heic,.heif" multiple onChange={handleFiles} className="hidden" />
               </label>
             )}
           </div>
@@ -276,7 +284,7 @@ export default function PostAdvert() {
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
         <button
-          disabled={submitting}
+          disabled={submitting || processing}
           className="w-full py-3.5 bg-brand-700 hover:bg-brand-800 disabled:opacity-60 text-white font-semibold rounded-xl transition flex items-center justify-center gap-2"
         >
           {submitting ? (
