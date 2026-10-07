@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Trash2, Star, EyeOff, CheckCircle2, ShieldCheck, Megaphone, Users, Eye } from "lucide-react";
+import {
+  Trash2, Star, EyeOff, CheckCircle2, ShieldCheck, Megaphone, Users, Eye, Flag,
+} from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatPrice, timeAgo } from "../lib/format";
 
@@ -28,6 +30,7 @@ export default function Admin() {
   const [tab, setTab] = useState("adverts");
   const [adverts, setAdverts] = useState([]);
   const [users, setUsers] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
@@ -40,19 +43,26 @@ export default function Admin() {
         .select("*, categories(name), advert_images(url, position)")
         .order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-    ]).then(([a, u]) => {
+      supabase.from("reports").select("*").order("created_at", { ascending: false }),
+    ]).then(([a, u, r]) => {
       if (a.error) setError(a.error.message);
       else setAdverts(a.data || []);
       if (u.error) setError(u.error.message);
       else setUsers(u.data || []);
+      if (r.error) setError(r.error.message);
+      else setReports(r.data || []);
       setLoading(false);
     });
   }, []);
 
-  // Look up a seller from the users list (no database embed needed)
+  // Lookups (no database embeds needed)
   const profileById = {};
   users.forEach((u) => {
     profileById[u.id] = u;
+  });
+  const advertById = {};
+  adverts.forEach((a) => {
+    advertById[a.id] = a;
   });
 
   const patchAdvert = async (advert, changes) => {
@@ -77,12 +87,35 @@ export default function Admin() {
 
     const { error } = await supabase.from("adverts").delete().eq("id", advert.id);
     if (error) setError(error.message);
-    else setAdverts((list) => list.filter((a) => a.id !== advert.id));
+    else {
+      setAdverts((list) => list.filter((a) => a.id !== advert.id));
+      // Reports for a deleted advert are removed by the database automatically
+      setReports((list) => list.filter((r) => r.advert_id !== advert.id));
+    }
+    setBusyId(null);
+  };
+
+  const setReportStatus = async (report, status) => {
+    setBusyId(report.id);
+    setError("");
+    const { error } = await supabase.from("reports").update({ status }).eq("id", report.id);
+    if (error) setError(error.message);
+    else setReports((list) => list.map((r) => (r.id === report.id ? { ...r, status } : r)));
+    setBusyId(null);
+  };
+
+  const deleteReport = async (report) => {
+    setBusyId(report.id);
+    setError("");
+    const { error } = await supabase.from("reports").delete().eq("id", report.id);
+    if (error) setError(error.message);
+    else setReports((list) => list.filter((r) => r.id !== report.id));
     setBusyId(null);
   };
 
   const shown = adverts.filter((a) => filter === "all" || a.status === filter);
   const totalViews = adverts.reduce((sum, a) => sum + (a.views || 0), 0);
+  const openReports = reports.filter((r) => r.status === "open").length;
 
   if (loading) return <p className="text-slate-500">Loading dashboard...</p>;
 
@@ -102,15 +135,20 @@ export default function Admin() {
       {error && <p className="mt-4 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
 
       <div className="mt-8 flex gap-2 border-b border-slate-200">
-        {["adverts", "users"].map((t) => (
+        {["adverts", "reports", "users"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-semibold capitalize border-b-2 -mb-px ${
+            className={`px-4 py-2 text-sm font-semibold capitalize border-b-2 -mb-px flex items-center gap-2 ${
               tab === t ? "border-brand-700 text-brand-700" : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
             {t}
+            {t === "reports" && openReports > 0 && (
+              <span className="text-[10px] font-bold bg-red-600 text-white px-1.5 py-0.5 rounded-full">
+                {openReports}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -221,6 +259,109 @@ export default function Admin() {
         </div>
       )}
 
+      {tab === "reports" && (
+        <div className="mt-4 bg-white border border-slate-200 rounded-2xl overflow-x-auto">
+          {reports.length === 0 ? (
+            <div className="text-center py-14">
+              <Flag size={36} className="mx-auto text-slate-300" />
+              <p className="mt-2 text-slate-500">No reports yet.</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-left text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Advert</th>
+                  <th className="px-4 py-3">Reason</th>
+                  <th className="px-4 py-3">Reported by</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">When</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {reports.map((r) => {
+                  const advert = advertById[r.advert_id];
+                  const reporter = profileById[r.reporter_id];
+                  const busy = busyId === r.id;
+                  return (
+                    <tr key={r.id} className={r.status === "resolved" ? "opacity-60" : ""}>
+                      <td className="px-4 py-3 min-w-[200px]">
+                        {advert ? (
+                          <Link to={`/adverts/${advert.id}`} className="font-semibold hover:text-brand-700">
+                            {advert.title}
+                          </Link>
+                        ) : (
+                          <span className="text-slate-400">Deleted advert</span>
+                        )}
+                        <p className="text-xs text-slate-500">
+                          {advert && `${advert.status} · by ${profileById[advert.user_id]?.full_name || "-"}`}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 min-w-[200px]">
+                        <p className="font-semibold">{r.reason}</p>
+                        {r.details && <p className="text-xs text-slate-500">{r.details}</p>}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{reporter?.full_name || "-"}</td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`text-xs font-bold px-2.5 py-1 rounded-full capitalize ${
+                            r.status === "open" ? "bg-red-100 text-red-700" : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-slate-500">{timeAgo(r.created_at)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          {advert && advert.status === "active" && (
+                            <button
+                              disabled={busy}
+                              title="Hide the reported advert"
+                              onClick={() => patchAdvert(advert, { status: "hidden" })}
+                              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                            >
+                              <EyeOff size={18} />
+                            </button>
+                          )}
+                          {r.status === "open" ? (
+                            <button
+                              disabled={busy}
+                              title="Mark as resolved"
+                              onClick={() => setReportStatus(r, "resolved")}
+                              className="p-2 rounded-lg text-green-600 hover:bg-green-50 disabled:opacity-50"
+                            >
+                              <CheckCircle2 size={18} />
+                            </button>
+                          ) : (
+                            <button
+                              disabled={busy}
+                              title="Reopen"
+                              onClick={() => setReportStatus(r, "open")}
+                              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+                            >
+                              <Flag size={18} />
+                            </button>
+                          )}
+                          <button
+                            disabled={busy}
+                            title="Dismiss report"
+                            onClick={() => deleteReport(r)}
+                            className="p-2 rounded-lg text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       {tab === "users" && (
         <div className="mt-4 bg-white border border-slate-200 rounded-2xl overflow-x-auto">
           <table className="w-full text-sm">
@@ -237,7 +378,9 @@ export default function Admin() {
               {users.map((u) => (
                 <tr key={u.id}>
                   <td className="px-4 py-3 font-semibold">
-                    {u.full_name || "-"}
+                    <Link to={`/seller/${u.id}`} className="hover:text-brand-700">
+                      {u.full_name || "-"}
+                    </Link>
                     {u.is_admin && (
                       <span className="ml-2 text-[10px] font-bold bg-brand-100 text-brand-800 px-2 py-0.5 rounded-full">
                         ADMIN

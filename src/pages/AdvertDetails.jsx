@@ -5,11 +5,14 @@ import {
   ChevronRight, ImageOff, Tag, ShieldCheck, ArrowLeft, User,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../context/AuthContext";
 import { formatPrice, timeAgo, toWhatsAppNumber } from "../lib/format";
 import { APP_NAME } from "../config";
+import ReportButton from "../components/ReportButton";
 
 export default function AdvertDetails() {
   const { id } = useParams();
+  const { user } = useAuth();
 
   const [advert, setAdvert] = useState(null);
   const [seller, setSeller] = useState(null);
@@ -54,8 +57,8 @@ export default function AdvertDetails() {
       setSeller(profile);
       setLoading(false);
 
-      // Count the view (fire and forget)
-         supabase
+      // Count the view
+      supabase
         .rpc("increment_views", { advert_uuid: id })
         .then(({ error }) => {
           if (error) console.error("View count failed:", error.message);
@@ -98,9 +101,10 @@ export default function AdvertDetails() {
   const images = advert.advert_images;
   const phone = seller?.phone || "";
   const whatsapp = toWhatsAppNumber(seller?.whatsapp || seller?.phone);
+  const isOwner = user?.id === advert.user_id;
 
   const waMessage = encodeURIComponent(
-    `Hi, I saw your advert "${advert.title}" on Adverts. Is it still available?`
+    `Hi, I saw your advert "${advert.title}" on ${APP_NAME}. Is it still available?`
   );
 
   const prev = () => setCurrent((c) => (c === 0 ? images.length - 1 : c - 1));
@@ -130,7 +134,6 @@ export default function AdvertDetails() {
       <div className="grid lg:grid-cols-3 gap-8">
         {/* LEFT: gallery + details */}
         <div className="lg:col-span-2">
-          {/* Main image */}
           <div className="relative aspect-[4/3] bg-slate-100 rounded-2xl overflow-hidden border border-slate-200">
             {images.length > 0 ? (
               <img src={images[current].url} alt={advert.title} className="w-full h-full object-contain bg-slate-900/5" />
@@ -169,7 +172,6 @@ export default function AdvertDetails() {
             )}
           </div>
 
-          {/* Thumbnails */}
           {images.length > 1 && (
             <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
               {images.map((img, i) => (
@@ -186,7 +188,6 @@ export default function AdvertDetails() {
             </div>
           )}
 
-          {/* Title + meta */}
           <div className="mt-6">
             <p className="text-xs font-bold text-brand-700 uppercase tracking-wide">
               {advert.categories?.name}
@@ -204,7 +205,6 @@ export default function AdvertDetails() {
             </div>
           </div>
 
-          {/* Description */}
           <div className="mt-6 bg-white border border-slate-200 rounded-2xl p-6">
             <h2 className="font-bold text-slate-900">Description</h2>
             <p className="mt-3 text-slate-600 whitespace-pre-line leading-relaxed">
@@ -249,12 +249,15 @@ export default function AdvertDetails() {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-6">
+          <Link
+            to={`/seller/${advert.user_id}`}
+            className="block bg-white border border-slate-200 hover:border-brand-600 rounded-2xl p-6 transition"
+          >
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center">
                 <User size={22} />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="font-bold text-slate-900">{seller?.full_name || "Seller"}</p>
                 {seller?.created_at && (
                   <p className="text-xs text-slate-500">
@@ -262,8 +265,10 @@ export default function AdvertDetails() {
                   </p>
                 )}
               </div>
+              <ChevronRight size={20} className="text-slate-400" />
             </div>
-          </div>
+            <p className="mt-3 text-sm font-semibold text-brand-700">View all adverts by this seller</p>
+          </Link>
 
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-sm text-amber-900">
             <p className="flex items-center gap-2 font-bold">
@@ -275,6 +280,8 @@ export default function AdvertDetails() {
               <li>Never pay in advance for something you haven't seen</li>
             </ul>
           </div>
+
+          {!isOwner && <ReportButton advertId={advert.id} />}
         </aside>
       </div>
     </div>

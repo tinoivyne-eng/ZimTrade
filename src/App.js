@@ -7,6 +7,7 @@ import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Browse from "./pages/Browse";
 import AdvertDetails from "./pages/AdvertDetails";
+import SellerProfile from "./pages/SellerProfile";
 import PostAdvert from "./pages/PostAdvert";
 import EditAdvert from "./pages/EditAdvert";
 import Login from "./pages/Login";
@@ -26,6 +27,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/adverts/:id" element={<AdvertDetails />} />
+              <Route path="/seller/:id" element={<SellerProfile />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
 
