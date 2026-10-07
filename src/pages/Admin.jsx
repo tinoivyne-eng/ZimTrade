@@ -37,7 +37,7 @@ export default function Admin() {
     Promise.all([
       supabase
         .from("adverts")
-        .select("*, categories(name), advert_images(url, position), profiles!user_id(full_name, phone)")
+        .select("*, categories(name), advert_images(url, position)")
         .order("created_at", { ascending: false }),
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
     ]).then(([a, u]) => {
@@ -48,6 +48,12 @@ export default function Admin() {
       setLoading(false);
     });
   }, []);
+
+  // Look up a seller from the users list (no database embed needed)
+  const profileById = {};
+  users.forEach((u) => {
+    profileById[u.id] = u;
+  });
 
   const patchAdvert = async (advert, changes) => {
     setBusyId(advert.id);
@@ -141,6 +147,7 @@ export default function Admin() {
                 {shown.map((a) => {
                   const cover = [...(a.advert_images || [])].sort((x, y) => x.position - y.position)[0]?.url;
                   const busy = busyId === a.id;
+                  const seller = profileById[a.user_id];
                   return (
                     <tr key={a.id}>
                       <td className="px-4 py-3">
@@ -155,8 +162,8 @@ export default function Admin() {
                         </Link>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <p>{a.profiles?.full_name || "-"}</p>
-                        <p className="text-xs text-slate-500">{a.profiles?.phone}</p>
+                        <p>{seller?.full_name || "-"}</p>
+                        <p className="text-xs text-slate-500">{seller?.phone}</p>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatPrice(a.price, a.currency)}</td>
                       <td className="px-4 py-3">
