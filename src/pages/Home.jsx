@@ -36,6 +36,7 @@ export default function Home() {
       .from("adverts")
       .select("*, categories(name), advert_images(url, position)")
       .eq("status", "active")
+      .order("featured", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => {

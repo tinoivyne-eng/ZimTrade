@@ -63,6 +63,9 @@ export default function Browse() {
       if (safe) query = query.or(`title.ilike.%${safe}%,description.ilike.%${safe}%`);
     }
 
+    // Featured adverts always come first, then the chosen sort
+    query = query.order("featured", { ascending: false });
+
     if (sort === "price_asc") query = query.order("price", { ascending: true, nullsFirst: false });
     else if (sort === "price_desc") query = query.order("price", { ascending: false, nullsFirst: false });
     else query = query.order("created_at", { ascending: false });
