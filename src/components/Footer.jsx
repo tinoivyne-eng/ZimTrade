@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Megaphone } from "lucide-react";
+import { APP_NAME } from "../config";
 
 export default function Footer() {
   return (
@@ -10,7 +11,9 @@ export default function Footer() {
             <span className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-800 flex items-center justify-center">
               <Megaphone size={18} />
             </span>
-            Adverts<span className="text-accent-400">.</span>
+            <span>
+              {APP_NAME}<span className="text-accent-400">.</span>
+            </span>
           </div>
           <p className="mt-3 text-sm">Everything Zimbabwe is selling, in one place.</p>
         </div>
@@ -32,7 +35,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-slate-800 text-center text-xs py-5">
-        © {new Date().getFullYear()} Adverts. Made in Zimbabwe 🇿🇼
+        © {new Date().getFullYear()} {APP_NAME}. Made in Zimbabwe 🇿🇼
       </div>
     </footer>
   );

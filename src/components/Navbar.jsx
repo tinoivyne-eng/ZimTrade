@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Menu, X, Plus, Heart, User, Megaphone, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { APP_NAME } from "../config";
 
 const linkClass = ({ isActive }) =>
   `px-3 py-2 rounded-lg text-sm font-semibold transition ${
@@ -30,7 +31,7 @@ export default function Navbar() {
             <Megaphone size={20} />
           </span>
           <span className="text-xl font-extrabold tracking-tight text-slate-900">
-            Adverts<span className="text-accent-500">.</span>
+            {APP_NAME}<span className="text-accent-500">.</span>
           </span>
         </Link>
 

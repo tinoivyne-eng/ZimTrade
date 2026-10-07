@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { formatPrice, timeAgo, toWhatsAppNumber } from "../lib/format";
+import { APP_NAME } from "../config";
 
 export default function AdvertDetails() {
   const { id } = useParams();
