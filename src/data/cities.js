@@ -1,0 +1,17 @@
+export const CITIES = [
+  "Harare",
+  "Bulawayo",
+  "Mutare",
+  "Gweru",
+  "Masvingo",
+  "Kwekwe",
+  "Kadoma",
+  "Chitungwiza",
+  "Victoria Falls",
+  "Hwange",
+  "Chinhoyi",
+  "Bindura",
+  "Marondera",
+  "Beitbridge",
+  "Other",
+];
