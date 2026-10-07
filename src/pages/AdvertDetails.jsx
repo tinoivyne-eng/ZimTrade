@@ -55,7 +55,11 @@ export default function AdvertDetails() {
       setLoading(false);
 
       // Count the view (fire and forget)
-      supabase.rpc("increment_views", { advert_uuid: id });
+         supabase
+        .rpc("increment_views", { advert_uuid: id })
+        .then(({ error }) => {
+          if (error) console.error("View count failed:", error.message);
+        });
     }
 
     load();
