@@ -5,7 +5,7 @@ import { APP_NAME } from "../config";
 export default function Footer() {
   return (
     <footer className="bg-slate-900 text-slate-400">
-      <div className="max-w-6xl mx-auto px-4 py-12 grid gap-8 md:grid-cols-3">
+      <div className="max-w-6xl mx-auto px-4 py-12 grid gap-8 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-2 text-white text-xl font-extrabold">
             <span className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-800 flex items-center justify-center">
@@ -31,6 +31,13 @@ export default function Footer() {
             <li><Link to="/login" className="hover:text-white">Login</Link></li>
             <li><Link to="/register" className="hover:text-white">Register</Link></li>
             <li><Link to="/my-adverts" className="hover:text-white">My adverts</Link></li>
+          </ul>
+        </div>
+        <div>
+          <p className="text-white font-semibold mb-3">Legal</p>
+          <ul className="space-y-2 text-sm">
+            <li><Link to="/terms" className="hover:text-white">Terms of Use</Link></li>
+            <li><Link to="/privacy" className="hover:text-white">Privacy Policy</Link></li>
           </ul>
         </div>
       </div>

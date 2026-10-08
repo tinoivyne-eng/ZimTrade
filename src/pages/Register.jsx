@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Phone, MessageCircle } from "lucide-react";
+import { Mail, Lock, User, Phone, MessageCircle, MailCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 function Field({ icon: Icon, ...props }) {
@@ -20,6 +20,7 @@ export default function Register() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkEmail, setCheckEmail] = useState(false);
 
   const update = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -31,11 +32,34 @@ export default function Register() {
       return;
     }
     setLoading(true);
-    const { error } = await signUp(form);
+    const { data, error } = await signUp(form);
     setLoading(false);
-    if (error) setError(error.message);
+
+    if (error) return setError(error.message);
+
+    // With email confirmation on, there is no session until the link is clicked
+    if (!data.session) setCheckEmail(true);
     else navigate("/");
   };
+
+  if (checkEmail) {
+    return (
+      <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm p-8 text-center">
+        <MailCheck size={48} className="mx-auto text-brand-600" />
+        <h1 className="mt-4 text-2xl font-extrabold text-slate-900">Check your email</h1>
+        <p className="mt-2 text-slate-500 text-sm">
+          We sent a confirmation link to <span className="font-semibold">{form.email}</span>. Click
+          it to activate your account, then log in. Check your spam folder if you can't find it.
+        </p>
+        <Link
+          to="/login"
+          className="mt-6 inline-block px-6 py-2.5 bg-brand-700 hover:bg-brand-800 text-white font-semibold rounded-xl"
+        >
+          Go to login
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
@@ -57,6 +81,12 @@ export default function Register() {
         >
           {loading ? "Creating account..." : "Register"}
         </button>
+
+        <p className="text-xs text-slate-400 text-center">
+          By registering you agree to our{" "}
+          <Link to="/terms" className="text-brand-700 hover:underline">Terms of Use</Link> and{" "}
+          <Link to="/privacy" className="text-brand-700 hover:underline">Privacy Policy</Link>.
+        </p>
       </form>
 
       <p className="mt-6 text-center text-sm text-slate-500">

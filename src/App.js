@@ -15,6 +15,8 @@ import Register from "./pages/Register";
 import MyAdverts from "./pages/MyAdverts";
 import Saved from "./pages/Saved";
 import Admin from "./pages/Admin";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
               <Route path="/seller/:id" element={<SellerProfile />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
 
               {/* Logged-in only */}
               <Route element={<ProtectedRoute />}>

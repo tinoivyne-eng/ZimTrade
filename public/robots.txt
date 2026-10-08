@@ -1,3 +1,10 @@
-# https://www.robotstxt.org/robotstxt.html
+
+
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /admin
+Disallow: /my-adverts
+Disallow: /post
+Disallow: /edit/
+
+Sitemap: https://zim-trade.vercel.app/sitemap.xml
